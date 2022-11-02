@@ -92,9 +92,16 @@ class PublishController extends Controller
         }
         
         $userEmail = auth()->user()->email;
-
+        $post = $res->json();
         PublishEmail::dispatch($userEmail)->delay(5);
             
+        Post::create([
+            'fb_post_id' => $post['id'],
+            'message' => $request->message,
+            'scheduled_publish_time' => $request->schudel_date??'',
+            'page_id' => $page->id
+        ]);
+
         return back()->with(['success' => 'post created successully' ]);
 
     }
@@ -118,8 +125,6 @@ class PublishController extends Controller
 
             $res = Http::withToken($page->token)->post('https://graph.facebook.com/'.$page->facebook_id.'/feed', ['message' => $request->message , 'published' => 'false', 'scheduled_publish_time' => $unixDate]);
            
-            
-           
         }
         else if( in_array($request->file->extension(), ['gif','jpeg','png','jpg'])  ){
             $data = [
@@ -138,7 +143,6 @@ class PublishController extends Controller
 
         }
 
-        
         $post = $res->json();
 
         Post::create([
