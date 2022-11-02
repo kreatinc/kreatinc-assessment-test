@@ -67,7 +67,7 @@
         <tr>
           <th scope="col">name</th>
           <th scope="col">Added on</th>
-          <th scope="col"></th>
+          <th scope="col">posted</th>
           <th scope="col"></th>
           <th scope="col"></th> 
         </tr>
@@ -79,11 +79,13 @@
                 white-space: nowrap;
                 overflow: hidden; max-width: 300px'>{{ $post->message ?? 'no content' }}</th>
                 <th>{{ $post->created_time }}</th>
+                <th>@if ( $post->scheduled_publish_time == null) true @else false @endif</th>
                 @if ( $post->scheduled_publish_time == null)
                     <th><a href="#">View</a></th>
                     <th></th>
                     
                 @else
+                    
                     <th><a href="#">Edite</a></th>
                     <th><a href="#">share now</a></th>
                 @endif

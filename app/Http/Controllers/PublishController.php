@@ -69,33 +69,31 @@ class PublishController extends Controller
             'page_id' => 'required|exists:pages,facebook_id',
         ]);
         $page = Page::where('facebook_id',$request->page_id)->first();
-        
+        $file = $request->file;
         $accessToken = $page->token;
-
         if(!$request->file){
-            $res = Http::withToken($page->token)->post('https://graph.facebook.com/me/feed', ['message' => $request->message]);
+            $res = Http::withToken($page->token)->post('https://graph.facebook.com/'.$page->facebook_id.'/feed', ['message' => $request->message]);
         }
         else if( in_array($request->file->extension(), ['gif','jpeg','png','jpg'])  ){
             $data = [
                 'message'=> $request->message,
-                'source' => $this->api->fileToUpload($request->file)
+                'source' => $file->path()
+                
             ];
-            $res = $this->api->post($request->page_id.'/photos',$data,$page->token );
-           
-            
+            $res = Http::withToken($page->token)->attach('source', file_get_contents($file), $file->getClientOriginalName())->post('https://graph.facebook.com/me/photos', $data)->throw()->json();
         }
         else{
             $data = [
                 'message'=> $request->message,
-                'source' => $this->api->fileToUpload($request->file)
+                'source' => $file->path()
             ];
-            $res = $this->api->post($request->page_id.'/videos',$data,$page->token );
+            $res = Http::withToken($page->token)->attach('source', file_get_contents($file), $file->getClientOriginalName())->post('https://graph.facebook.com/'.$page->facebook_id.'/videos', $data);
 
         }
         
         $userEmail = auth()->user()->email;
 
-        PublishEmail::dispatch($userEmail)->delay(10);
+        PublishEmail::dispatch($userEmail)->delay(5);
             
         return back()->with(['success' => 'post created successully' ]);
 
@@ -116,21 +114,13 @@ class PublishController extends Controller
         $page = Page::where('facebook_id',$request->page_id)->first();
         $accessToken = $page->token;
         if(!$request->file){
-            $res = $this->api->post( $request->page_id.'/feed?published=false&message='.$request->message.'&scheduled_publish_time='.$unixDate.'&access_token='.$accessToken);
-        
-            $post = $res->getDecodedBody();
-            Post::create([
-                'fb_post_id' => $post['id'],
-                'message' => $request->message,
-                'scheduled_publish_time' => $request->schudel_date ,
-                'page_id' => $page->id,
-                'created_time' => Carbon::now(),
-            ]);
-            Mail::to(auth()->user()->email)->send(new PostCreated);
 
-            return back()->with(['success' => 'post created successully' ]);
+            $res = Http::withToken($page->token)->post('https://graph.facebook.com/'.$page->facebook_id.'/feed', ['message' => $request->message , 'published' => 'false', 'scheduled_publish_time' => $unixDate]);
+           
+            
+           
         }
-        if( in_array($request->file->extension(), ['gif','jpeg','png','jpg'])  ){
+        else if( in_array($request->file->extension(), ['gif','jpeg','png','jpg'])  ){
             $data = [
                 'message'=> $request->message,
                 'source' => $this->api->fileToUpload($request->file)
@@ -145,17 +135,20 @@ class PublishController extends Controller
             ];
             $res = $this->api->post($request->page_id.'/videos?published=false&scheduled_publish_time='.$unixDate,$data,$page->token );
         }
+
         
-        $post = $res->getDecodedBody();
+        $post = $res->json();
         Post::create([
             'fb_post_id' => $post['id'],
             'message' => $request->message,
             'scheduled_publish_time' => $request->schudel_date ,
-            'page_id' => $page->id,
-            'created_time' => Carbon::now(),
+            'page_id' => $page->id
         ]);
-        Mail::to(auth()->user()->email)->send(new PostCreated);
+    
+        $userEmail = auth()->user()->email;
 
+        PublishEmail::dispatch($userEmail)->delay(5);
+            
         return back()->with(['success' => 'post created successully' ]);
 
     }
