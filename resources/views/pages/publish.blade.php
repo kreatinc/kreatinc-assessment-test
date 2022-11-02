@@ -79,7 +79,7 @@
                 white-space: nowrap;
                 overflow: hidden; max-width: 300px'>{{ $post->message ?? 'no content' }}</th>
                 <th>{{ $post->created_time }}</th>
-                <th>@if ( $post->scheduled_publish_time == null) true @else false @endif</th>
+                <th>@if ( $post->scheduled_publish_time == '') true @else false @endif</th>
                 @if ( $post->scheduled_publish_time == null)
                     <th><a href="#">View</a></th>
                     <th></th>

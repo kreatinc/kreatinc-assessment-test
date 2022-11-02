@@ -109,6 +109,7 @@ class PublishController extends Controller
         ]);
 
         $date = str_replace('T', ' ', $request->schudel_date);
+        $file = $request->file;
 
         $unixDate = Carbon::createFromFormat('Y-m-d H:i', $date)->unix();
         $page = Page::where('facebook_id',$request->page_id)->first();
@@ -125,7 +126,7 @@ class PublishController extends Controller
                 'message'=> $request->message,
                 'source' => $this->api->fileToUpload($request->file)
             ];
-            $res = $this->api->post($request->page_id.'/photos?published=false&scheduled_publish_time='.$unixDate ,$data,$page->token );
+            $res = Http::withToken($page->token)->attach('source', file_get_contents($file), $file->getClientOriginalName())->post('https://graph.facebook.com/'.$page->facebook_id.'/photos', ['message' => $request->message , 'published' => 'false', 'scheduled_publish_time' => $unixDate]);
             
         }
         else{
@@ -133,15 +134,17 @@ class PublishController extends Controller
                 'message'=> $request->message,
                 'source' => $this->api->fileToUpload($request->file)
             ];
-            $res = $this->api->post($request->page_id.'/videos?published=false&scheduled_publish_time='.$unixDate,$data,$page->token );
+            $res = Http::withToken($page->token)->attach('source', file_get_contents($file), $file->getClientOriginalName())->post('https://graph.facebook.com/'.$page->facebook_id.'/video', ['message' => $request->message , 'published' => 'false', 'scheduled_publish_time' => $unixDate]);
+
         }
 
         
         $post = $res->json();
+
         Post::create([
             'fb_post_id' => $post['id'],
             'message' => $request->message,
-            'scheduled_publish_time' => $request->schudel_date ,
+            'scheduled_publish_time' => $request->schudel_date??'',
             'page_id' => $page->id
         ]);
     
