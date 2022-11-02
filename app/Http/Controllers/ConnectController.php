@@ -1,33 +1,23 @@
 <?php
 
 namespace App\Http\Controllers;
-use Facebook\Facebook;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Http\Request;
 use App\Models\Page;
+use Facebook\Facebook;
 
 class ConnectController extends Controller
 {
     //
-    private $api;
-    public function __construct()
-    {
-        $config = config('services.facebook');
 
-        $fb = new Facebook([
-            'app_id' => $config['client_id'],
-            'app_secret' => $config['client_secret'],
-            'default_graph_version' => 'v14.0'
-        ]);
 
-        $this->middleware(function ($request, $next) use ($fb) {
-            $fb->setDefaultAccessToken(auth()->user()->token);
-            $this->api = $fb;
-            return $next($request);
-        });
-    }
+    
     public function index(){
-        $res = $this->api->get('/me?fields=accounts');
-        $data = $res->getDecodedBody();
+        
+
+        $token = auth()->user()->token;
+        $data = Http::withToken($token)->get('https://graph.facebook.com/v15.0/me?fields=accounts');
+
         $pages = $data['accounts']['data'];
         foreach($pages as $page){
             Page::updateOrCreate([

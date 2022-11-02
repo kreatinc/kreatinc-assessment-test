@@ -1,13 +1,18 @@
 <?php
 
 namespace App\Http\Controllers;
-use Facebook\Facebook;
+
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Mail;
 use App\Models\Page;
-use App\Mail\PostCreated;
 use App\Models\Post;
+use App\Models\User;
+use App\Jobs\PublishEmail;
 use Carbon\Carbon;
+use Facebook\Facebook;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\WeekMail;
+
 class PublishController extends Controller
 {
     //
@@ -28,13 +33,14 @@ class PublishController extends Controller
         });
     }
     public function index(){
+        
         $pages = Page::where('user_id', auth()->user()->id)->get();  
         foreach($pages as $page){
 
-            $data = $this->api->get('me?fields=posts{id,is_published,message,created_time,scheduled_publish_time}', $page->token);
-            $dataArray = $data->getDecodedBody();
-            
-            if( array_key_exists('posts', $dataArray) ){
+    
+            $dataArray = Http::withToken($page->token)->get('https://graph.facebook.com/me?fields=posts');
+            // dd($dataArray->json());
+            if( array_key_exists('posts', $dataArray->json()) ){
                 $posts = $dataArray['posts']['data'];
                 foreach($posts as $post){
                     $pts = Post::updateOrCreate([
@@ -46,7 +52,6 @@ class PublishController extends Controller
                         'created_time' => $post['created_time'],
                     ]);
                 }
-                
             }
             
 
@@ -57,42 +62,45 @@ class PublishController extends Controller
         return view('pages.publish', ['posts'=> $posts, 'pages' => Page::where('user_id', auth()->user()->id )->get() ]);
     }
     public function store(Request $request){
+        
         $request->validate([
             'message' => 'string|max:255',
             'file' => 'file|mimetypes:video/mp4,video/avi,video/mpeg,video/quicktime,image/gif,image/png,image/jpeg,image/jpg',
             'page_id' => 'required|exists:pages,facebook_id',
         ]);
         $page = Page::where('facebook_id',$request->page_id)->first();
-
+        
         $accessToken = $page->token;
+
         if(!$request->file){
-            $res = $this->api->post( $request->page_id.'/feed?message='.$request->message.'&access_token='.$accessToken);
-            Mail::to( auth()->user()->email )->send(new PostCreated);
-
-            return back()->with(['success' => 'post created successully' ]);
-
+            $res = Http::withToken($page->token)->post('https://graph.facebook.com/me/feed', ['message' => $request->message]);
         }
+
         if( in_array($request->file->extension(), ['gif','jpeg','png','jpg'])  ){
             $data = [
                 'message'=> $request->message,
                 'source' => $this->api->fileToUpload($request->file)
             ];
             $res = $this->api->post($request->page_id.'/photos',$data,$page->token );
-            Mail::to(auth()->user()->email)->send(new PostCreated);
-
-            return back()->with(['success' => 'post created successully' ]);
+           
             
         }
+
         else{
             $data = [
                 'message'=> $request->message,
                 'source' => $this->api->fileToUpload($request->file)
             ];
             $res = $this->api->post($request->page_id.'/videos',$data,$page->token );
-            Mail::to(auth()->user()->email)->send(new PostCreated);
-            
-            return back()->with(['success' => 'post created successully' ]);
+
         }
+        
+        $userEmail = auth()->user()->email;
+
+        PublishEmail::dispatch($userEmail)->delay(10);
+            
+        return back()->with(['success' => 'post created successully' ]);
+
     }
 
 
