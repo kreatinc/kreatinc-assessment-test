@@ -75,8 +75,7 @@ class PublishController extends Controller
         if(!$request->file){
             $res = Http::withToken($page->token)->post('https://graph.facebook.com/me/feed', ['message' => $request->message]);
         }
-
-        if( in_array($request->file->extension(), ['gif','jpeg','png','jpg'])  ){
+        else if( in_array($request->file->extension(), ['gif','jpeg','png','jpg'])  ){
             $data = [
                 'message'=> $request->message,
                 'source' => $this->api->fileToUpload($request->file)
@@ -85,7 +84,6 @@ class PublishController extends Controller
            
             
         }
-
         else{
             $data = [
                 'message'=> $request->message,
