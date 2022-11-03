@@ -92,7 +92,9 @@ class PublishController extends Controller
         }
         
         $userEmail = auth()->user()->email;
+
         $post = $res->json();
+        
         PublishEmail::dispatch($userEmail)->delay(5);
             
         Post::create([
@@ -108,6 +110,7 @@ class PublishController extends Controller
 
 
     public function storeScheduled(Request $request){
+
         $request->validate([
             'message' => 'string|max:255',
             'file' => 'file|mimetypes:video/mp4,video/avi,video/mpeg,video/quicktime,image/gif,image/png,image/jpeg,image/jpg',

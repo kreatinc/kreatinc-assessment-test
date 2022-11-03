@@ -33,7 +33,7 @@ return [
     'facebook' => [
         'client_id' => env('FACEBOOK_CLIENT_ID'),
         'client_secret' => env('FACEBOOK_CLIENT_SECRET'),
-        'redirect' => 'https://localhost:8000/facebook/callback',
+        'redirect' => 'https://assessment-tes.herokuapp.com/facebook/callback',
     ],
     
 ];
